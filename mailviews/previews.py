@@ -5,7 +5,7 @@ from collections import namedtuple
 from email.header import decode_header
 
 import django
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.http import Http404
 from django.shortcuts import render
 
@@ -39,6 +39,9 @@ def maybe_decode_header(header):
     """
     Decodes an encoded 7-bit ASCII header value into it's actual value.
     """
+    if header is None:
+        return ""
+
     value, encoding = decode_header(header)[0]
     if encoding:
         return value.decode(encoding)
@@ -90,8 +93,8 @@ class PreviewSite(object):
             ]
 
             urlpatterns += url_staticsfiles
-            
-        return include(urlpatterns, namespace=URL_NAMESPACE)
+
+        return include((urlpatterns, 'mailviews'), namespace=URL_NAMESPACE)
 
     def list_view(self, request):
         """

@@ -2,13 +2,13 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/python:2.7-jessie
+      - image: circleci/python:3.6.8-jessie
 
     steps:
       - checkout
       - run:
           name: install dependencies
-          command: pip install --user Django==1.11.13
+          command: pip install --user Django==2.2.6
       - run:
           name: run tests
           command: python -m mailviews.tests

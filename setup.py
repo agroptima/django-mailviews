@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 
 
 setup(name='django-mailviews',
-    version='0.6.5',
+    version='0.7.5',
     url='http://github.com/disqus/django-mailviews/',
     author='ted kaemming',
     author_email='ted@disqus.com',
@@ -11,7 +11,7 @@ setup(name='django-mailviews',
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        'Django>=1.3',
+        'Django>=2.2.6',
     ],
     test_suite='mailviews.tests.__main__.__main__',
     zip_safe=False,
