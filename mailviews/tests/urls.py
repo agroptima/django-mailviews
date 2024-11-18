@@ -1,13 +1,9 @@
-from django.conf.urls import include, url
-
+from django.urls import re_path
 
 from mailviews.previews import autodiscover, site
 
-
 autodiscover()
 
-app_name = 'mailviews'
+app_name = "mailviews"
 
-urlpatterns = [
-    url(regex=r'', view=site.urls)
-]
+urlpatterns = [re_path(route=r"", view=site.urls)]
