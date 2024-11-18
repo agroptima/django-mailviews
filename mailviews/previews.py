@@ -5,9 +5,9 @@ from collections import namedtuple
 from email.header import decode_header
 
 import django
-from django.urls import reverse
 from django.http import Http404
 from django.shortcuts import render
+from django.urls import reverse
 
 try:
     from collections import OrderedDict
@@ -19,20 +19,18 @@ try:
 except ImportError:
     from django.utils.importlib import import_module
 
+from django.urls import include, re_path
 from django.utils.module_loading import module_has_submodule
 
 from mailviews.helpers import should_use_staticfiles
 from mailviews.utils import split_docstring, unimplemented
 
-from django.conf.urls import include, url
-
-
 logger = logging.getLogger(__name__)
 
 
-URL_NAMESPACE = 'mailviews'
+URL_NAMESPACE = "mailviews"
 
-ModulePreviews = namedtuple('ModulePreviews', ('module', 'previews'))
+ModulePreviews = namedtuple("ModulePreviews", ("module", "previews"))
 
 
 def maybe_decode_header(header):
@@ -58,7 +56,9 @@ class PreviewSite(object):
         Returns an iterator of :class:`ModulePreviews` tuples, sorted by module nae.
         """
         for module in sorted(self.__previews.keys()):
-            previews = ModulePreviews(module, sorted(self.__previews[module].values(), key=str))
+            previews = ModulePreviews(
+                module, sorted(self.__previews[module].values(), key=str)
+            )
             yield previews
 
     def register(self, cls):
@@ -66,7 +66,7 @@ class PreviewSite(object):
         Adds a preview to the index.
         """
         preview = cls(site=self)
-        logger.debug('Registering %r with %r', preview, self)
+        logger.debug("Registering %r with %r", preview, self)
         index = self.__previews.setdefault(preview.module, {})
         index[cls.__name__] = preview
 
@@ -74,35 +74,43 @@ class PreviewSite(object):
     def urls(self):
 
         urlpatterns = [
-            url(regex=r'^$',
-                view=self.list_view,
-                name='list'),
-            url(regex=r'^(?P<module>.+)/(?P<preview>.+)/$',
+            re_path(route=r"^$", view=self.list_view, name="list"),
+            re_path(
+                route=r"^(?P<module>.+)/(?P<preview>.+)/$",
                 view=self.detail_view,
-                name='detail'),
+                name="detail",
+            ),
         ]
 
         if not should_use_staticfiles():
             url_staticsfiles = [
-                url(regex=r'^static/(?P<path>.*)$',
+                re_path(
+                    route=r"^static/(?P<path>.*)$",
                     view=django.views.static.serve,
                     kwargs={
-                        'document_root': os.path.join(os.path.dirname(__file__), 'static'),
+                        "document_root": os.path.join(
+                            os.path.dirname(__file__), "static"
+                        ),
                     },
-                    name='static')
+                    name="static",
+                )
             ]
 
             urlpatterns += url_staticsfiles
 
-        return include((urlpatterns, 'mailviews'), namespace=URL_NAMESPACE)
+        return include((urlpatterns, "mailviews"), namespace=URL_NAMESPACE)
 
     def list_view(self, request):
         """
         Returns a list view response containing all of the registered previews.
         """
-        return render(request, 'mailviews/previews/list.html', {
-            'site': self,
-        })
+        return render(
+            request,
+            "mailviews/previews/list.html",
+            {
+                "site": self,
+            },
+        )
 
     def detail_view(self, request, module, preview):
         """
@@ -121,7 +129,7 @@ class Preview(object):
     message_view = property(unimplemented)
 
     #: The subset of headers to show in the preview panel.
-    headers = ('Subject', 'From', 'To')
+    headers = ("Subject", "From", "To")
 
     #: The title of this email message to use in the previewer. If not provided,
     #: this will default to the name of the message view class.
@@ -132,7 +140,7 @@ class Preview(object):
     form_class = None
 
     #: The template that will be rendered for this preview.
-    template_name = 'mailviews/previews/detail.html'
+    template_name = "mailviews/previews/detail.html"
 
     def __init__(self, site):
         self.site = site
@@ -142,7 +150,7 @@ class Preview(object):
 
     @property
     def module(self):
-        return '%s' % self.message_view.__module__
+        return "%s" % self.message_view.__module__
 
     @property
     def description(self):
@@ -152,17 +160,20 @@ class Preview(object):
         If not provided, this defaults to the first paragraph of the underlying
         message view class' docstring.
         """
-        return getattr(split_docstring(self.message_view), 'summary', None)
+        return getattr(split_docstring(self.message_view), "summary", None)
 
     @property
     def url(self):
         """
         The URL to access this preview.
         """
-        return reverse('%s:detail' % URL_NAMESPACE, kwargs={
-            'module': self.module,
-            'preview': type(self).__name__,
-        })
+        return reverse(
+            "%s:detail" % URL_NAMESPACE,
+            kwargs={
+                "module": self.module,
+                "preview": type(self).__name__,
+            },
+        )
 
     def get_message_view(self, request, **kwargs):
         return self.message_view(**kwargs)
@@ -172,7 +183,7 @@ class Preview(object):
         Renders the message view to a response.
         """
         context = {
-            'preview': self,
+            "preview": self,
         }
 
         kwargs = {}
@@ -182,9 +193,9 @@ class Preview(object):
             else:
                 form = self.form_class()
 
-            context['form'] = form
+            context["form"] = form
             if not form.is_bound or not form.is_valid():
-                return render(request, 'mailviews/previews/detail.html', context)
+                return render(request, "mailviews/previews/detail.html", context)
 
             kwargs.update(form.get_message_view_kwargs())
 
@@ -192,24 +203,33 @@ class Preview(object):
 
         message = message_view.render_to_message()
         raw = message.message()
-        headers = OrderedDict((header, maybe_decode_header(raw[header])) for header in self.headers)
+        headers = OrderedDict(
+            (header, maybe_decode_header(raw[header])) for header in self.headers
+        )
 
-        context.update({
-            'message': message,
-            'subject': message.subject,
-            'body': message.body,
-            'headers': headers,
-            'raw': raw.as_string(),
-        })
+        context.update(
+            {
+                "message": message,
+                "subject": message.subject,
+                "body": message.body,
+                "headers": headers,
+                "raw": raw.as_string(),
+            }
+        )
 
-        alternatives = getattr(message, 'alternatives', [])
+        alternatives = getattr(message, "alternatives", [])
         try:
-            html = next(alternative[0] for alternative in alternatives
-                if alternative[1] == 'text/html')
-            context.update({
-                'html': html,
-                'escaped_html': b64encode(html.encode('utf-8')),
-            })
+            html = next(
+                alternative[0]
+                for alternative in alternatives
+                if alternative[1] == "text/html"
+            )
+            context.update(
+                {
+                    "html": html,
+                    "escaped_html": b64encode(html.encode("utf-8")),
+                }
+            )
         except StopIteration:
             pass
 
@@ -221,18 +241,19 @@ def autodiscover():
     Imports all available previews classes.
     """
     from django.conf import settings
+
     for application in settings.INSTALLED_APPS:
         module = import_module(application)
 
-        if module_has_submodule(module, 'emails'):
-            emails = import_module('%s.emails' % application)
+        if module_has_submodule(module, "emails"):
+            emails = import_module("%s.emails" % application)
             try:
-                import_module('%s.emails.previews' % application)
+                import_module("%s.emails.previews" % application)
             except ImportError:
                 # Only raise the exception if this module contains previews and
                 # there was a problem importing them. (An emails module that
                 # does not contain previews is not an error.)
-                if module_has_submodule(emails, 'previews'):
+                if module_has_submodule(emails, "previews"):
                     raise
 
 
